@@ -53,14 +53,14 @@ async function init() {
     logger.info('✅ Base de datos inicializada');
 
     const apiKey = process.env.GRVT_API_KEY;
+    const apiSecret = process.env.GRVT_API_SECRET;
     const subAccountId = process.env.GRVT_SUB_ACCOUNT_ID;
     const environment = (process.env.GRVT_ENVIRONMENT || 'prod') as 'prod' | 'testnet' | 'staging';
-
-    if (!apiKey || !subAccountId) {
+    if (!apiKey || !apiSecret || !subAccountId) {
       throw new Error('❌ Credenciales no configuradas');
     }
+    grvtClient = new GRVTClient({ apiKey, apiSecret, subAccountId, environment });
 
-    grvtClient = new GRVTClient({ apiKey, subAccountId, environment });
     await grvtClient.connect();
     logger.info('✅ Conectado a GRVT');
 
