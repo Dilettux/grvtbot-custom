@@ -4,9 +4,8 @@ import { logger } from '../utils/logger';
 
 interface GRVTConfig {
   apiKey: string;
-  apiSecret: string;
-  tradingAddress: string;
-  accountId: string;
+  subAccountId: string;
+  environment?: 'prod' | 'testnet' | 'staging';
 }
 
 interface Order {
@@ -29,24 +28,75 @@ interface Position {
 export class GRVTClient {
   private config: GRVTConfig;
   private client: AxiosInstance;
-  private baseURL = 'https://api.grvt.io/v1'; // Ajusta según GRVT docs
+  private baseURL: string;
+  private authEndpoint: string;
+  private sessionCookie: string = '';
+  private accountId: string = '';
 
   constructor(config: GRVTConfig) {
     this.config = config;
+    const env = config.environment || 'prod';
+
+    // Configurar endpoints según ambiente
+    if (env === 'prod') {
+      this.authEndpoint = 'https://edge.grvt.io/auth/api_key/login';
+      this.baseURL = 'https://edge.grvt.io';
+    } else if (env === 'testnet') {
+      this.authEndpoint = 'https://edge.testnet.grvt.io/auth/api_key/login';
+      this.baseURL = 'https://edge.testnet.grvt.io';
+    } else {
+      this.authEndpoint = 'https://edge.staging.gravitymarkets.io/auth/api_key/login';
+      this.baseURL = 'https://edge.staging.gravitymarkets.io';
+    }
+
     this.client = axios.create({
       baseURL: this.baseURL,
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': config.apiKey,
       },
+      withCredentials: true,
     });
   }
 
   async connect(): Promise<void> {
     try {
-      // Valida credenciales haciendo un ping
-      const response = await this.client.get('/account');
-      logger.info(`✅ Conectado a GRVT como ${response.data.address}`);
+      logger.info('🔐 Autenticando con GRVT...');
+
+      // Autentica con API Key
+      const authResponse = await axios.post(
+        this.authEndpoint,
+        { api_key: this.config.apiKey },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': 'rm=true;',
+          },
+        }
+      );
+
+      // Extrae cookie y account ID de la respuesta
+      const setCookieHeader = authResponse.headers['set-cookie'];
+      if (setCookieHeader) {
+        const cookieArray = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+        this.sessionCookie = cookieArray
+          .find(c => c.includes('gravity='))
+          ?.split(';')[0] || '';
+      }
+
+      const accountIdHeader = authResponse.headers['x-grvt-account-id'];
+      if (accountIdHeader) {
+        this.accountId = accountIdHeader.toString().trim();
+      }
+
+      if (!this.sessionCookie || !this.accountId) {
+        throw new Error('No se pudieron obtener credenciales de sesión');
+      }
+
+      // Actualiza client con cookies de sesión
+      this.client.defaults.headers.Cookie = this.sessionCookie;
+      this.client.defaults.headers['X-Grvt-Account-Id'] = this.accountId;
+
+      logger.info(`✅ Conectado a GRVT (Account: ${this.accountId})`);
     } catch (error) {
       throw new Error(`❌ No se pudo conectar a GRVT: ${error}`);
     }

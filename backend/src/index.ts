@@ -47,18 +47,18 @@ async function init() {
 
     // Valida credenciales
     const apiKey = process.env.GRVT_API_KEY;
-    const apiSecret = process.env.GRVT_API_SECRET;
+    const subAccountId = process.env.GRVT_SUB_ACCOUNT_ID;
+    const environment = (process.env.GRVT_ENVIRONMENT || 'prod') as 'prod' | 'testnet' | 'staging';
 
-    if (!apiKey || !apiSecret) {
-      throw new Error('❌ GRVT_API_KEY o GRVT_API_SECRET no configuradas');
+    if (!apiKey || !subAccountId) {
+      throw new Error('❌ GRVT_API_KEY o GRVT_SUB_ACCOUNT_ID no configuradas');
     }
 
     // Inicializa cliente GRVT
     grvtClient = new GRVTClient({
       apiKey,
-      apiSecret,
-      tradingAddress: process.env.GRVT_TRADING_ADDRESS || '',
-      accountId: process.env.GRVT_TRADING_ACCOUNT_ID || '',
+      subAccountId,
+      environment,
     });
 
     await grvtClient.connect();
