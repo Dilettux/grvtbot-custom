@@ -23,6 +23,13 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// Dashboard - PRIMERA RUTA
+const dashboardHTML = `...`; // (todo el HTML que ya está ahí)
+
+app.get('/dashboard', (req, res) => {
+  res.send(dashboardHTML);
+});
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
