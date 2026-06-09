@@ -4,7 +4,6 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
-import path from 'path';
 import { Database } from './db/database';
 import { GRVTClient } from './grvt/client';
 import { GridEngine } from './trading/gridEngine';
@@ -17,19 +16,14 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Servir archivos estáticos
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Dashboard
+// Dashboard HTML inline - SIMPLE y FUNCIONA
 app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/dashboard.html'));
+  res.send(`<!DOCTYPE html><html><head><title>GRVTBot</title><style>body{font-family:sans-serif;background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;padding:40px;margin:0}h1{text-align:center;margin-bottom:40px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:40px}.card{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px}.card h3{color:rgba(255,255,255,0.6);text-transform:uppercase;margin-bottom:10px;font-size:0.9em}.value{font-size:2em;color:#4ade80;font-weight:bold}button{background:#3b82f6;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-right:10px;margin-top:20px}button:hover{background:#2563eb}</style></head><body><h1>🤖 GRVTBot Dashboard</h1><div class="cards"><div class="card"><h3>Estado</h3><div class="value">✅ OK</div></div><div class="card"><h3>Grids Activos</h3><div class="value" id="grids">0</div></div><div class="card"><h3>Fills</h3><div class="value" id="fills">0</div></div><div class="card"><h3>PnL</h3><div class="value" id="pnl">$0.00</div></div></div><button onclick="load()">🔄 Actualizar</button><script>function load(){fetch('/api/status').then(r=>r.json()).then(d=>{document.getElementById('grids').textContent=d.activeGrids||0;document.getElementById('fills').textContent=d.totalFills||0;document.getElementById('pnl').textContent='$'+(d.totalPnL||0).toFixed(2);}).catch(e=>console.error('Error:',e));}load();setInterval(load,5000);</script></body></html>`);
 });
 
-// Rate limiting
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use('/api/', limiter);
 
@@ -50,7 +44,7 @@ async function init() {
     const environment = (process.env.GRVT_ENVIRONMENT || 'prod') as 'prod' | 'testnet' | 'staging';
 
     if (!apiKey || !subAccountId) {
-      throw new Error('❌ GRVT_API_KEY o GRVT_SUB_ACCOUNT_ID no configuradas');
+      throw new Error('❌ Credenciales no configuradas');
     }
 
     grvtClient = new GRVTClient({ apiKey, subAccountId, environment });
@@ -64,34 +58,17 @@ async function init() {
     setupRoutes(app, grvtClient, gridEngine, db);
 
     app.get('/health', (req, res) => {
-      res.json({ status: 'ok', timestamp: new Date() });
+      res.json({ status: 'ok' });
     });
 
     wss.on('connection', (ws) => {
       logger.info('📱 WebSocket conectado');
-      ws.on('message', (message) => {
-        try {
-          const data = JSON.parse(message.toString());
-          logger.debug('📨 WS:', data.type);
-        } catch (error) {
-          logger.error('❌ WS Error:', error);
-        }
-      });
       ws.on('close', () => logger.info('📱 WebSocket cerrado'));
-    });
-
-    gridEngine.on('update', (data) => {
-      wss.clients.forEach((client) => {
-        if (client.readyState === 1) {
-          client.send(JSON.stringify({ type: 'update', data }));
-        }
-      });
     });
 
     const port = process.env.BOT_PORT || 3848;
     server.listen(port, () => {
-      logger.info(`✅ Servidor corriendo en puerto ${port}`);
-      logger.info(`📊 Dashboard: http://localhost:${port}/dashboard`);
+      logger.info(`✅ Servidor en puerto ${port}`);
       logger.info(`⚡ Active bots loaded`);
     });
 
@@ -102,23 +79,15 @@ async function init() {
 }
 
 process.on('SIGTERM', async () => {
-  logger.info('📍 SIGTERM recibido');
   try {
     await gridEngine?.stop();
     await grvtClient?.disconnect();
-    server.close(() => {
-      logger.info('✅ Cerrado');
-      process.exit(0);
-    });
+    server.close(() => process.exit(0));
   } catch (error) {
-    logger.error('❌ Error:', error);
     process.exit(1);
   }
 });
 
-init().catch((error) => {
-  logger.error('❌ Error fatal:', error);
-  process.exit(1);
-});
+init().catch(() => process.exit(1));
 
 export { app, wss, grvtClient, gridEngine, db };
