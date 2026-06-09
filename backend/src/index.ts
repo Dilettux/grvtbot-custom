@@ -21,6 +21,9 @@ const wss = new WebSocketServer({ server });
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  originAgentCluster: false,
 }));
 app.use(cors());
 app.use(express.json());
