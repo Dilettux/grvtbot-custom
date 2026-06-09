@@ -18,13 +18,7 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-// Middleware
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginOpenerPolicy: false,
-  crossOriginResourcePolicy: false,
-  originAgentCluster: false,
-}));
+// app.use(helmet()); // Desactivado temporalmente para desarrollo
 app.use(cors());
 app.use(express.json());
 
