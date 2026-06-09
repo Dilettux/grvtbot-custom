@@ -105,13 +105,6 @@ async function init() {
       res.json({ status: 'ok', timestamp: new Date() });
     });
 
-    // Serve static frontend
-    app.use(express.static('frontend/dist'));
-
-    // Fallback para SPA
-    app.get('*', (req, res) => {
-      res.sendFile('frontend/dist/index.html', { root: '.' });
-    });
 
     // Start server
     const port = process.env.BOT_PORT || 3848;
