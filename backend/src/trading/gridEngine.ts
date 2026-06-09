@@ -27,7 +27,7 @@ export class GridEngine extends EventEmitter {
   private grids: Map<string, GridState> = new Map();
   private grvt: GRVTClient;
   private db: Database;
-  private updateInterval: NodeJS.Timer | null = null;
+  private updateInterval: any = null;
   private isRunning = false;
 
   constructor(grvt: GRVTClient, db: Database) {
