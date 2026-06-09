@@ -9,6 +9,7 @@ import { GRVTClient } from './grvt/client';
 import { GridEngine } from './trading/gridEngine';
 import setupRoutes from './api/routes';
 import { logger } from './utils/logger';
+import helmet from 'helmet';
 
 dotenv.config();
 
@@ -16,6 +17,18 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
+app.use(require('helmet')({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      connectSrc: ["'self'"],
+      imgSrc: ["'self'", "data:"],
+    },
+  },
+  crossOriginOpenerPolicy: true,
+}));
 app.use(cors());
 app.use(express.json());
 
