@@ -20,15 +20,7 @@ const wss = new WebSocketServer({ server });
 
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:'],
-      connectSrc: ["'self'"],
-    },
-  },
+  contentSecurityPolicy: false,
 }));
 app.use(cors());
 app.use(express.json());
